@@ -1,0 +1,12 @@
+#!/usr/bin/python3
+"""Locate either the source checkout or the installed application."""
+from pathlib import Path
+import sys
+
+prefix = Path(__file__).resolve().parent.parent
+root = prefix if (prefix / "mandelbot").is_dir() else prefix / "lib/mandelbot"
+sys.path.insert(0, str(root))
+
+from mandelbot.__main__ import main
+
+raise SystemExit(main())

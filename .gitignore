@@ -1,0 +1,24 @@
+# Generated binaries, packages, captures and local verification evidence.
+/build/
+/dist/
+__pycache__/
+*.py[cod]
+*.so
+
+# Local reference material is not part of the independent Linux product.
+/*.msi
+/*.zip
+/License.rtf
+/docs/MSI-EXAMINATION.md
+
+# Keep detailed workstation history locally; publish the release verification summary.
+/LOG-BOOK.md
+
+# Local credentials and editor files.
+.env
+.env.*
+*.pem
+*.key
+.vscode/
+.idea/
+*~

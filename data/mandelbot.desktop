@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Mandelbot
+Comment=Explore the Mandelbrot set with a native Linux screensaver
+Exec=mandelbot --settings
+Icon=mandelbot
+Terminal=false
+Categories=Graphics;Utility;
+Keywords=fractal;Mandelbrot;screensaver;
+StartupNotify=true
+StartupWMClass=mandelbot
+Actions=Fullscreen;Quit;
+
+[Desktop Action Fullscreen]
+Name=Start fullscreen
+Exec=mandelbot --fullscreen
+
+[Desktop Action Quit]
+Name=Stop Mandelbot
+Exec=mandelbot --quit
