@@ -1,0 +1,77 @@
+name: Publish Mandelbot 0.1.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-0.1.0.yml
+      - releases/v0.1.0/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-mandelbot-0.1.0
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'DJW1080/Mandelbot-LinuxMint' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: v0.1.0
+      RELEASE_VERSION: 0.1.0
+      PACKAGE_NAME: mandelbot_0.1.0_amd64.deb
+      PACKAGE_SHA256: 0081f114eecac4bf51a045323bfc9658212446023dcff74e0a268a88afffd65c
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download and verify the tested installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}"
+          mkdir release-assets
+          cd release-assets
+          for asset_name in "$PACKAGE_NAME" SHA256SUMS; do
+            curl --fail --silent --show-error --location --retry 3 \
+              "$source_url/releases/$RELEASE_TAG/$asset_name" --output "$asset_name"
+          done
+          printf '%s  %s\n' "$PACKAGE_SHA256" "$PACKAGE_NAME" | sha256sum --check --strict
+          sha256sum --check --strict SHA256SUMS
+          test "$(dpkg-deb --field "$PACKAGE_NAME" Version)" = "$RELEASE_VERSION"
+          test "$(dpkg-deb --field "$PACKAGE_NAME" Architecture)" = amd64
+          curl --fail --silent --show-error --location --retry 3 \
+            "$source_url/docs/RELEASE-$RELEASE_VERSION.md" --output release-notes.md
+
+      - name: Publish the release and verified assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd release-assets
+          release_state="$(gh api "repos/$GH_REPO/releases?per_page=100" \
+            --jq '.[] | select(.tag_name == "v0.1.0") | if .draft then "draft" else "published" end')"
+
+          # A rerun verifies an existing public release without replacing it.
+          if [ "$release_state" = published ]; then
+            gh release download "$RELEASE_TAG" --dir published-assets \
+              --pattern "$PACKAGE_NAME" --pattern SHA256SUMS
+            cmp "$PACKAGE_NAME" "published-assets/$PACKAGE_NAME"
+            cmp SHA256SUMS published-assets/SHA256SUMS
+            gh release view "$RELEASE_TAG" --json url --jq .url
+            exit 0
+          fi
+
+          if [ -z "$release_state" ]; then
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft \
+              --title "Mandelbot $RELEASE_VERSION" --notes-file release-notes.md
+          fi
+          # Only the draft may be resumed; published assets are never overwritten.
+          gh release upload "$RELEASE_TAG" "$PACKAGE_NAME" SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
+          gh release view "$RELEASE_TAG" --json url --jq .url
